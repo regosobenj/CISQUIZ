@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetQuiz — Networking Fundamentals</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161921;
+    --surface2: #1e2230;
+    --border: #2a2f3e;
+    --accent: #5b8cff;
+    --accent2: #38e5a0;
+    --danger: #ff5c6a;
+    --warn: #ffb547;
+    --text: #e8eaf0;
+    --muted: #6b7390;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.6; min-height: 100vh; }
+
+  /* BG grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ---- SCREENS ---- */
+  .screen { display: none; position: relative; z-index: 1; }
+  .screen.active { display: block; }
+
+  /* ---- HOME ---- */
+  #home {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+  .home-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+    display: inline-block;
+  }
+  .home-title {
+    font-family: var(--mono);
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+  .home-title span { color: var(--accent); }
+  .home-sub {
+    font-size: 1.1rem;
+    color: var(--muted);
+    max-width: 480px;
+    margin: 0 auto 3rem;
+  }
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    max-width: 720px;
+    width: 100%;
+    margin-bottom: 2.5rem;
+  }
+  .mod-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 10px;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .mod-card:hover { border-color: var(--accent); transform: translateY(-2px); background: var(--surface2); }
+  .mod-card.selected { border-color: var(--accent); background: rgba(91,140,255,0.1); }
+  .mod-card.all-card { grid-column: 1 / -1; }
+  .mod-num { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+  .mod-label { font-size: 13px; color: var(--text); font-weight: 500; }
+  .mod-count { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .start-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 14px 48px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .start-btn:hover { background: #7aa5ff; transform: translateY(-1px); }
+
+  /* ---- QUIZ ---- */
+  #quiz { min-height: 100vh; padding: 0; }
+
+  .quiz-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,15,20,0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .quiz-header-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+  .q-counter { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .progress-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s ease; }
+  .skip-badge {
+    font-family: var(--mono); font-size: 11px; color: var(--warn);
+    border: 1px solid var(--warn); border-radius: 20px;
+    padding: 3px 10px; white-space: nowrap;
+  }
+  .header-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .header-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .quiz-body { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+
+  .q-module-tag {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    letter-spacing: 2px; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .q-module-tag::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .q-skipped-tag { font-family: var(--mono); font-size: 11px; color: var(--warn); margin-bottom: .5rem; }
+
+  .q-text {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 2rem;
+  }
+  .multi-hint { font-size: 12px; color: var(--warn); font-family: var(--mono); margin-top: -1.5rem; margin-bottom: 1.5rem; }
+
+  .choices { display: flex; flex-direction: column; gap: 10px; }
+  .choice-btn {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all .18s;
+    text-align: left;
+    width: 100%;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .choice-btn:hover:not(:disabled) { border-color: var(--accent); background: rgba(91,140,255,0.07); }
+  .choice-btn.selected { border-color: var(--accent); background: rgba(91,140,255,0.12); }
+  .choice-btn.correct { border-color: var(--accent2); background: rgba(56,229,160,0.1); color: var(--accent2); }
+  .choice-btn.wrong { border-color: var(--danger); background: rgba(255,92,106,0.1); color: var(--danger); }
+  .choice-btn.reveal { border-color: var(--accent2); background: rgba(56,229,160,0.07); color: var(--accent2); }
+  .choice-btn:disabled { cursor: default; }
+  .choice-letter {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    min-width: 22px; padding-top: 2px;
+    color: var(--muted);
+  }
+  .choice-btn.selected .choice-letter { color: var(--accent); }
+  .choice-btn.correct .choice-letter { color: var(--accent2); }
+  .choice-btn.wrong .choice-letter { color: var(--danger); }
+  .choice-btn.reveal .choice-letter { color: var(--accent2); }
+
+  .feedback-box {
+    margin-top: 1.25rem;
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: var(--mono);
+    animation: fadeUp .2s ease;
+  }
+  .feedback-box.correct { background: rgba(56,229,160,0.1); border: 1px solid var(--accent2); color: var(--accent2); }
+  .feedback-box.wrong { background: rgba(255,92,106,0.1); border: 1px solid var(--danger); color: var(--danger); }
+
+  .q-actions { display: flex; gap: 12px; margin-top: 2rem; flex-wrap: wrap; }
+  .q-btn {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    padding: 12px 28px; border-radius: 8px; cursor: pointer;
+    border: 1px solid; transition: all .2s; letter-spacing: .5px;
+  }
+  .q-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .q-btn.primary:hover { background: #7aa5ff; }
+  .q-btn.secondary { background: transparent; color: var(--muted); border-color: var(--border); }
+  .q-btn.secondary:hover { border-color: var(--warn); color: var(--warn); }
+  .q-btn.skip { background: transparent; color: var(--warn); border-color: var(--warn); }
+  .q-btn.skip:hover { background: rgba(255,181,71,0.1); }
+
+  /* skipped queue panel */
+  .skipped-panel {
+    background: var(--surface);
+    border: 1px solid var(--warn);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 2rem;
+    animation: fadeUp .3s ease;
+  }
+  .skipped-panel h3 { font-family: var(--mono); font-size: 12px; color: var(--warn); margin-bottom: 10px; letter-spacing: 2px; }
+  .skipped-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .skipped-item {
+    font-family: var(--mono); font-size: 11px;
+    background: rgba(255,181,71,0.1);
+    border: 1px solid var(--warn);
+    color: var(--warn);
+    padding: 4px 10px; border-radius: 4px;
+    cursor: pointer; transition: all .15s;
+  }
+  .skipped-item:hover { background: rgba(255,181,71,0.2); }
+
+  /* ---- RESULTS ---- */
+  #results { min-height: 100vh; padding: 3rem 1.5rem; }
+  .results-wrap { max-width: 900px; margin: 0 auto; }
+  .results-header { text-align: center; margin-bottom: 3rem; }
+  .results-title { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 3px; margin-bottom: 1rem; }
+  .results-score-big { font-family: var(--mono); font-size: clamp(4rem, 15vw, 8rem); font-weight: 700; line-height: 1; margin-bottom: .5rem; }
+  .results-pct { font-size: 1.1rem; color: var(--muted); margin-bottom: 2rem; }
+  .score-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 3rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+  .score-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .score-card-num { font-family: var(--mono); font-size: 2rem; font-weight: 700; margin-bottom: 4px; }
+  .score-card-lbl { font-size: 12px; color: var(--muted); }
+  .score-card.correct .score-card-num { color: var(--accent2); }
+  .score-card.wrong .score-card-num { color: var(--danger); }
+  .score-card.skipped .score-card-num { color: var(--warn); }
+
+  .results-section-title {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    letter-spacing: 2px; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .results-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .review-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 3rem; }
+  .review-card {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 20px 22px;
+    border-left: 3px solid var(--border);
+  }
+  .review-card.wrong-card { border-left-color: var(--danger); }
+  .review-card.skipped-card { border-left-color: var(--warn); }
+  .review-qnum { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .review-q { font-size: 15px; font-weight: 500; margin-bottom: 12px; }
+  .review-your { font-size: 13px; color: var(--danger); margin-bottom: 4px; }
+  .review-correct { font-size: 13px; color: var(--accent2); }
+  .review-skipped-label { font-size: 13px; color: var(--warn); font-family: var(--mono); }
+
+  .results-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 2rem; }
+  .res-btn {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    padding: 12px 28px; border-radius: 8px; cursor: pointer;
+    border: 1px solid; transition: all .2s; letter-spacing: .5px;
+  }
+  .res-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .res-btn.primary:hover { background: #7aa5ff; }
+  .res-btn.secondary { background: transparent; color: var(--muted); border-color: var(--border); }
+  .res-btn.secondary:hover { border-color: var(--text); color: var(--text); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .fade-in { animation: fadeUp .3s ease; }
+
+  /* module filter row */
+  .mod-filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2.5rem; }
+  .mf-btn {
+    font-family: var(--mono); font-size: 11px;
+    padding: 5px 12px; border-radius: 20px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); cursor: pointer; transition: all .15s;
+  }
+  .mf-btn.active { border-color: var(--danger); color: var(--danger); background: rgba(255,92,106,0.08); }
+  .mf-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  @media (max-width: 500px) {
+    .quiz-header { flex-wrap: wrap; }
+    .q-text { font-size: 1.05rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="home-badge">NETWORKING FUNDAMENTALS</div>
+  <h1 class="home-title">NET<span>QUIZ</span></h1>
+  <p class="home-sub">Practice all modules from your course material. Skip hard questions and come back later.</p>
+  <div class="module-grid" id="moduleGrid"></div>
+  <button class="start-btn" onclick="startQuiz()">START QUIZ →</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" class="screen">
+  <div class="quiz-header">
+    <div class="quiz-header-left">
+      <span class="q-counter" id="qCounter">0 / 0</span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <span class="skip-badge" id="skipBadge" style="display:none">0 skipped</span>
+    </div>
+    <button class="header-btn" onclick="goToResults()">FINISH & SCORE</button>
+    <button class="header-btn" onclick="goHome()">EXIT</button>
+  </div>
+  <div class="quiz-body" id="quizBody"></div>
+</div>
+
+<!-- RESULTS -->
+<div id="results" class="screen">
+  <div class="results-wrap" id="resultsWrap"></div>
+</div>
+
+<script>
+const LETTERS = ['A','B','C','D','E','F'];
+
+const MOD_NAMES = {
+  1:'Intro to Networks', 2:'IOS & Protocols', 3:'Comm Standards',
+  4:'Physical Layer', 5:'IP Addressing', 6:'Data Link Layer',
+  7:'Ethernet', 8:'Network Layer', 9:'ARP & Switching',
+  10:'Router Config', 11:'Subnetting', 12:'IPv6',
+  13:'ICMP & Ping', 14:'Transport Layer', 15:'App Layer',
+  16:'Security', 17:'Small Networks', 0:'Checkpoint'
+};
+
+const ALL_Q = [
+{m:1,q:"How does BYOD change the way in which businesses implement networks?",c:["BYOD requires organizations to purchase laptops rather than desktops.","BYOD users are responsible for their own network security, reducing the need for security policies.","BYOD devices are more expensive than devices purchased by an organization.","BYOD provides flexibility in where and how users can access network resources."],a:[3]},
+{m:1,q:"What network feature would allow an employee to gain secure remote access to a company network?",c:["ACL","IPS","VPN","BYOD"],a:[2]},
+{m:1,q:"What is the Internet?",c:["A network based on Ethernet technology.","It provides network access for mobile devices.","It provides connections through interconnected global networks.","A private network for an organization with LAN and WAN connections."],a:[2]},
+{m:1,q:"What are two functions of end devices on a network? (Choose two.)",c:["They originate the data that flows through the network.","They direct data over alternate paths in the event of link failures.","They filter the flow of data to enhance security.","They are the interface between humans and the communication network.","They provide the channel over which the network message travels."],a:[0,3],multi:true},
+{m:1,q:"In which scenario would the use of a WISP be recommended?",c:["An Internet cafe in a city","A farm in a rural area without wired broadband access","Any home with multiple wireless devices","An apartment in a building with cable access to the Internet"],a:[1]},
+{m:1,q:"What characteristic enables a network to quickly grow to support new users without impacting existing users?",c:["Reliability","Scalability","Quality of service","Accessibility"],a:[1]},
+{m:1,q:"Workers accidentally damaged a fiber optic cable but students only experienced a very short interruption. What characteristic is shown?",c:["Quality of service (QoS)","Scalability","Security","Fault tolerance","Integrity"],a:[3]},
+{m:1,q:"What are two characteristics of a scalable network? (Choose two.)",c:["Easily overloaded with increased traffic","Grows in size without impacting existing users","Is not as reliable as a small network","Suitable for modular devices that allow for expansion","Offers limited number of applications"],a:[1,3],multi:true},
+{m:1,q:"Which device determines the path that messages should take through internetworks?",c:["A router","A firewall","A web server","A DSL modem"],a:[0]},
+{m:1,q:"Which two Internet connection options do not require physical cables run to the building? (Choose two.)",c:["DSL","Cellular","Satellite","Dialup","Dedicated leased line"],a:[1,2],multi:true},
+{m:1,q:"What type of network must a home user access to do online shopping?",c:["An intranet","The Internet","An extranet","A local area network"],a:[1]},
+{m:1,q:"Software secretly collects data about websites visited by users. Which type of threat is this?",c:["DoS attack","Identity theft","Spyware","Zero-day attack"],a:[2]},
+{m:1,q:"Which term refers to a network that provides secure access to corporate offices by suppliers, customers and collaborators?",c:["Internet","Intranet","Extranet","Extendednet"],a:[2]},
+{m:1,q:"A large corporation allows users to access network resources from personal laptops and smartphones. Which trend does this describe?",c:["Cloud computing","Online collaboration","Bring your own device","Video conferencing"],a:[2]},
+{m:1,q:"What is an ISP?",c:["A standards body that develops cabling standards.","A protocol that establishes how computers within a local network communicate.","An organization that enables individuals and businesses to connect to the Internet.","A networking device that combines the functionality of several different networking devices in one."],a:[2]},
+{m:1,q:"Identify the Intermediary device.",c:["Printer","Hub","PC","Telephone"],a:[1]},
+{m:2,q:"Which functionality is provided by DHCP?",c:["Automatic assignment of an IP address to each host","Remote switch management","Translation of IP addresses to domain names","End-to-end connectivity test"],a:[0]},
+{m:2,q:"Which two functions are provided by the context-sensitive help feature of the Cisco IOS CLI? (Choose two.)",c:["Providing an error message when a wrong command is submitted","Displaying a list of all available commands within the current mode","Allowing the user to complete an abbreviated command with the TAB key","Determining which option, keyword, or argument is available for the entered command","Selecting the best command to accomplish a task"],a:[1,3],multi:true},
+{m:2,q:"Which memory location on a Cisco router or switch stores the startup configuration file?",c:["RAM","ROM","NVRAM","Flash"],a:[2]},
+{m:2,q:"To what subnet does the IP address 10.1.100.50 belong if a subnet mask of 255.255.0.0 is used?",c:["10.1.0.0","10.0.0.0","10.1.100.32","10.1.100.0"],a:[0]},
+{m:2,q:"When configuring a hostname via Cisco CLI, which three naming conventions apply? (Choose three.)",c:["The hostname should be fewer than 64 characters in length","The hostname should be written in all lower case characters","The hostname should contain no spaces","The hostname should end with a special character","The hostname should begin with a letter"],a:[0,2,4],multi:true},
+{m:2,q:"What is the function of the shell in an OS?",c:["It interacts with the device hardware.","It interfaces between the users and the kernel.","It provides dedicated firewall services.","It provides intrusion protection services for the device."],a:[1]},
+{m:2,q:"A router with a valid OS contains a config file in NVRAM with an enable secret password but no console password. Which mode will display when it boots?",c:["Global configuration mode","Setup mode","Privileged EXEC mode","User EXEC mode"],a:[3]},
+{m:2,q:"An administrator changed the IP address of an interface on an IOS device. What else must be done to apply those changes?",c:["Copy the running configuration to the startup configuration file.","Copy the startup configuration file to the running configuration.","Reload the device and type yes when prompted to save the configuration.","Nothing must be done. Changes take effect as soon as the command is typed correctly and Enter is pressed."],a:[3]},
+{m:2,q:"Which memory location on a Cisco router or switch will lose all content when the device is restarted?",c:["ROM","Flash","NVRAM","RAM"],a:[3]},
+{m:2,q:"Why would a technician enter the command copy startup-config running-config?",c:["To remove all configurations from the switch","To save an active configuration to NVRAM","To copy an existing configuration into RAM","To make a changed configuration the new startup configuration"],a:[2]},
+{m:2,q:"Which statement is true about the running configuration file in a Cisco IOS device?",c:["It affects the operation of the device immediately when modified.","It is stored in NVRAM.","It should be deleted using the erase running-config command.","It is automatically saved when the router reboots."],a:[0]},
+{m:2,q:"Which two statements are true regarding the user EXEC mode? (Choose two.)",c:["All router commands are available.","Global configuration mode can be accessed by entering the enable command.","The device prompt for this mode ends with the '>' symbol.","Interfaces and routing protocols can be configured.","Only some aspects of the router configuration can be viewed."],a:[2,4],multi:true},
+{m:2,q:"Which type of access is secured on a Cisco router or switch with the enable secret command?",c:["Virtual terminal","Privileged EXEC","AUX port","Console line"],a:[1]},
+{m:2,q:"What is the default SVI on a Cisco switch?",c:["VLAN1","VLAN99","VLAN100","VLAN999"],a:[0]},
+{m:2,q:"What process is used to receive transmitted data and convert it into a readable message?",c:["Access control","Decoding","Encapsulation","Flow control"],a:[1]},
+{m:2,q:"What is done to an IP packet before it is transmitted over the physical medium?",c:["It is tagged with information guaranteeing reliable delivery.","It is segmented into smaller individual pieces.","It is encapsulated into a TCP segment.","It is encapsulated in a Layer 2 frame."],a:[3]},
+{m:2,q:"What process is used to place one message inside another message for transfer from source to destination?",c:["Access control","Decoding","Encapsulation","Flow control"],a:[2]},
+{m:2,q:"From the client's perspective, what is the correct order of the protocol stack to prepare a web request for transmission?",c:["HTTP, IP, TCP, Ethernet","HTTP, TCP, IP, Ethernet","Ethernet, TCP, IP, HTTP","Ethernet, IP, TCP, HTTP"],a:[1]},
+{m:2,q:"What are two benefits of using a layered network model? (Choose two.)",c:["It assists in protocol design.","It speeds up packet delivery.","It prevents designers from creating their own model.","It prevents technology in one layer from affecting other layers.","It ensures a device at one layer can function at the next higher layer."],a:[0,3],multi:true},
+{m:2,q:"What is the purpose of protocols in data communications?",c:["Specifying the bandwidth of the channel for each type of communication","Specifying the device operating systems that will support the communication","Providing the rules required for a specific type of communication to occur","Dictating the content of the message sent during communication"],a:[2]},
+{m:2,q:"Which logical address is used for delivery of data to a remote network?",c:["Destination MAC address","Destination IP address","Destination port number","Source MAC address","Source IP address"],a:[1]},
+{m:2,q:"What is the general term used to describe a piece of data at any layer of a networking model?",c:["Frame","Packet","Protocol data unit","Segment"],a:[2]},
+{m:2,q:"Which two protocols function at the internet layer? (Choose two.)",c:["POP","BOOTP","ICMP","IP","PPP"],a:[2,3],multi:true},
+{m:2,q:"Which layer of the OSI model defines services to segment and reassemble data for individual communications between end devices?",c:["Application","Presentation","Session","Transport","Network"],a:[3]},
+{m:2,q:"Which type of communication will send a message to a group of host destinations simultaneously?",c:["Broadcast","Multicast","Unicast","Anycast"],a:[1]},
+{m:2,q:"Which three acronyms represent standards organizations? (Choose three.)",c:["IANA","TCP/IP","IEEE","IETF","OSI","MAC"],a:[0,2,3],multi:true},
+{m:2,q:"What type of communication will send a message to all devices on a local area network?",c:["Broadcast","Multicast","Unicast","Allcast"],a:[0]},
+{m:2,q:"In computer communication, what is the purpose of message encoding?",c:["To convert information to the appropriate form for transmission","To interpret information","To break large messages into smaller frames","To negotiate correct timing for successful communication"],a:[0]},
+{m:2,q:"Which message delivery option is used when all devices need to receive the same message simultaneously?",c:["Duplex","Unicast","Multicast","Broadcast"],a:[3]},
+{m:2,q:"What three requirements are defined by protocols to allow message transmission across a network? (Choose three.)",c:["Connector specifications","Message encoding","Media selection","Message size","Delivery options","End-device installation"],a:[1,3,4],multi:true},
+{m:2,q:"What type of delivery uses data link layer addresses?",c:["Remote delivery","Local and remote delivery","Local delivery","Remote delivery using routers"],a:[2]},
+{m:2,q:"What layer of the TCP/IP protocol model determines the best path through the network?",c:["Application","Transport","Internet","Network access"],a:[2]},
+{m:4,q:"A network administrator notices that signals generated by the server NIC are distorted and not usable. In which OSI layer is the error categorized?",c:["Physical layer","Network layer","Data link layer","Presentation layer"],a:[0]},
+{m:4,q:"What type of cable is used to connect a workstation serial port to a Cisco router console port?",c:["Coaxial","Rollover","Crossover","Straight-through"],a:[1]},
+{m:4,q:"Why are two strands of fiber used for a single fiber optic connection?",c:["They prevent crosstalk from causing interference on the connection.","They increase the speed at which the data can travel.","They allow the data to travel for longer distances without degrading.","They allow for full-duplex connectivity."],a:[3]},
+{m:4,q:"Which procedure is used to reduce the effect of crosstalk in copper cables?",c:["Wrapping the bundle of wires with metallic shielding","Twisting opposing circuit wire pairs together","Requiring proper grounding connections","Designing a cable infrastructure to avoid crosstalk interference","Avoiding sharp bends during installation"],a:[1]},
+{m:4,q:"What is one advantage of using fiber optic cabling rather than copper cabling?",c:["It is able to be installed around sharp bends.","It is easier to terminate and install than copper cabling.","It is able to carry signals much farther than copper cabling.","It is usually cheaper than copper cabling."],a:[2]},
+{m:4,q:"Under which situation would a wireless connection be recommended?",c:["The end-user device needs mobility when connecting to the network.","The end-user device area has a high concentration of RFI.","The end-user device requires a dedicated connection because of performance requirements.","The end-user device only has an Ethernet NIC."],a:[0]},
+{m:4,q:"Which type of UTP cable is used to connect a PC to a switch port?",c:["Rollover","Console","Straight-through","Crossover"],a:[2]},
+{m:4,q:"What is the definition of bandwidth?",c:["The amount of data that can flow from one place to another in a given amount of time","The speed at which bits travel on the network","The measure of usable data transferred over a given period of time","The speed of bits across the media over a given period of time"],a:[0]},
+{m:4,q:"Which statement correctly describes frame encoding?",c:["It uses the characteristic of one wave to modify another wave.","It transmits data signals along with a clock signal which occurs at evenly spaced time durations.","It generates the electrical, optical, or wireless signals that represent the binary numbers of the frame.","It converts bits into a predefined code to provide a predictable pattern to help distinguish data bits from control bits."],a:[3]},
+{m:4,q:"What is a characteristic of UTP cabling?",c:["Cladding","Cancellation","Woven copper braid or metallic foil","Immunity to electrical hazards"],a:[1]},
+{m:4,q:"A wireless LAN signal at the highest part of a national park is occasionally affected by interference. What is a possible cause?",c:["The large number of trees that surround the office","The number of wireless devices used in the wireless LAN","The elevated location where the wireless LAN was installed","The microwave oven"],a:[0]},
+{m:4,q:"What is the purpose of the OSI physical layer?",c:["Controlling access to media","Performing error detection on received frames","Exchanging frames between nodes over physical network media","Transmitting bits across the local media"],a:[3]},
+{m:4,q:"Which characteristic describes crosstalk?",c:["The distortion of the network signal from fluorescent lighting","The loss of wireless signal over excessive distance from the access point","The weakening of the network signal over long cable lengths","The distortion of the transmitted messages from signals carried in adjacent wires"],a:[3]},
+{m:4,q:"What is indicated by the term throughput?",c:["The capacity of a particular medium to carry data","The guaranteed data transfer rate offered by an ISP","The time it takes for a message to get from sender to receiver","The measure of the bits transferred across the media over a given period of time","The measure of the usable data transferred across the media"],a:[3]},
+{m:4,q:"Which standards organization oversees development of wireless LAN standards?",c:["IANA","ISO","IEEE","TIA"],a:[2]},
+{m:5,q:"What is the binary representation for the decimal number 173?",c:["10101101","10100111","10110101","10100101"],a:[0]},
+{m:5,q:"Given the binary address 11101100 00010001 00001100 00001010, which dotted decimal does this represent?",c:["236.17.12.6","234.17.10.9","236.17.12.10","234.16.12.10"],a:[2]},
+{m:5,q:"How many binary bits exist within an IPv6 address?",c:["256","64","48","128","32"],a:[3]},
+{m:5,q:"What is the binary equivalent of the decimal number 232?",c:["11000110","10011000","11110010","11101000"],a:[3]},
+{m:5,q:"Which two statements are correct about IPv4 and IPv6 addresses? (Choose two.)",c:["IPv6 addresses are represented by hexadecimal numbers.","IPv6 addresses are 32 bits in length.","IPv6 addresses are 64 bits in length.","IPv4 addresses are 128 bits in length.","IPv4 addresses are 32 bits in length.","IPv4 addresses are represented by hexadecimal numbers."],a:[0,4],multi:true},
+{m:5,q:"Which IPv4 address format was created for ease of use and is expressed as 201.192.1.14?",c:["Hexadecimal","Binary","Dotted decimal","ASCII"],a:[2]},
+{m:5,q:"What is the dotted decimal representation of the IPv4 address 11001011.00000000.01110001.11010011?",c:["192.0.2.199","209.165.201.223","203.0.113.211","198.51.100.201"],a:[2]},
+{m:5,q:"What is the decimal equivalent of the binary number 10010101?",c:["192","157","168","149"],a:[3]},
+{m:5,q:"What is the decimal equivalent of the hex number 0x3F?",c:["87","63","77","93"],a:[1]},
+{m:5,q:"What is the dotted decimal representation of 00001010.01100100.00010101.00000001?",c:["10.100.21.1","100.10.11.1","100.21.10.1","10.10.20.1"],a:[0]},
+{m:5,q:"What is the decimal equivalent of 0xC9?",c:["185","201","200","199"],a:[1]},
+{m:5,q:"Which is a valid hexadecimal number?",c:["F","H","J","G"],a:[0]},
+{m:5,q:"What is the binary representation of 0xCA?",c:["11010101","10111010","11001010","11011010"],a:[2]},
+{m:5,q:"How many bits are in an IPv4 address?",c:["64","256","128","32"],a:[3]},
+{m:6,q:"What identifier is used at the data link layer to uniquely identify an Ethernet device?",c:["UDP port number","MAC address","Sequence number","TCP port number","IP address"],a:[1]},
+{m:6,q:"What attribute of a NIC would place it at the data link layer of the OSI model?",c:["Attached Ethernet cable","MAC address","IP address","RJ-45 port","TCP/IP protocol stack"],a:[1]},
+{m:6,q:"Which two engineering organizations define open standards for the data link layer? (Choose two.)",c:["International Telecommunication Union (ITU)","Internet Society (ISOC)","Institute of Electrical and Electronics Engineers (IEEE)","Internet Assigned Numbers Authority (IANA)","Electronic Industries Alliance (EIA)"],a:[2,4],multi:true},
+{m:6,q:"What is true concerning physical and logical topologies?",c:["Physical topologies are concerned with how a network transfers frames.","Logical topologies refer to how a network transfers data between devices.","The logical topology is always the same as the physical topology.","Physical topologies display the IP addressing scheme of each network."],a:[1]},
+{m:6,q:"What method is used to manage contention-based access on a wireless network?",c:["Priority ordering","CSMA/CA","CSMA/CD","Token passing"],a:[1]},
+{m:6,q:"Which physical topology requires that every node is attached to every other node on the network?",c:["Bus","Hierarchical","Mesh","Star","Ring"],a:[2]},
+{m:6,q:"Which statement describes the half-duplex mode of data transmission?",c:["Data that is transmitted over the network can only flow in one direction.","Data that is transmitted over the network flows in both directions at the same time.","Data that is transmitted over the network flows in one direction to many different destinations simultaneously.","Data that is transmitted over the network flows in one direction at a time."],a:[3]},
+{m:6,q:"Which is a function of the Logical Link Control (LLC) sublayer?",c:["To provide data link layer addressing","To identify which network layer protocol is being used","To define the media access processes that are performed by the hardware","To accept segments and package them into data units that are called packets"],a:[1]},
+{m:6,q:"Which data link layer media access control method does Ethernet use with legacy Ethernet hubs?",c:["CSMA/CD","Turn taking","Determinism","Token passing"],a:[0]},
+{m:6,q:"What are the two sublayers of the OSI model data link layer? (Choose two.)",c:["LLC","Internet","Physical","Transport","MAC","Network access"],a:[0,4],multi:true},
+{m:6,q:"Which layer of the OSI model is responsible for specifying the encapsulation method used for specific types of media?",c:["Transport","Physical","Data link","Application"],a:[2]},
+{m:6,q:"What type of physical topology can be created by connecting all Ethernet cables to a central device?",c:["Mesh","Ring","Star","Bus"],a:[2]},
+{m:6,q:"What are two services performed by the data link layer of the OSI model? (Choose two.)",c:["It monitors the Layer 2 communication by building a MAC address table.","It accepts Layer 3 packets and encapsulates them into frames.","It provides media access control and performs error detection.","It determines the path to forward packets.","It fragments data packets into the MTU size."],a:[1,2],multi:true},
+{m:6,q:"Although CSMA/CD is still a feature of Ethernet, why is it no longer necessary?",c:["The use of CSMA/CA","The use of full-duplex capable Layer 2 switches","The virtually unlimited availability of IPv6 addresses","The development of half-duplex switch operation","The use of Gigabit Ethernet speeds"],a:[1]},
+{m:7,q:"Which two characteristics describe Ethernet technology? (Choose two.)",c:["It is supported by IEEE 802.5 standards.","It is supported by IEEE 802.3 standards.","It uses unique MAC addresses to ensure that data is sent to the appropriate destination.","It uses a ring topology.","It typically uses an average of 16 Mbps for data transfer rates."],a:[1,2],multi:true},
+{m:7,q:"What statement describes a characteristic of MAC addresses?",c:["They are only routable within the private network.","They must be globally unique.","They are added as part of a Layer 3 PDU.","They have a 32-bit binary value."],a:[1]},
+{m:7,q:"What is the special value assigned to the first 24 bits of a multicast MAC address transporting an IPv4 packet?",c:["FF-FF-FF","FF-00-5E","01-00-5E","01-5E-00"],a:[2]},
+{m:7,q:"What will a host on an Ethernet network do if it receives a frame with a unicast destination MAC address that does not match its own?",c:["It will remove the frame from the media.","It will strip off the data-link frame to check the destination IP address.","It will discard the frame.","It will forward the frame to the next host."],a:[2]},
+{m:7,q:"Which network device makes forwarding decisions based on the destination MAC address that is contained in the frame?",c:["Switch","Repeater","Hub","Router"],a:[0]},
+{m:7,q:"Which network device has the primary function to send data to a specific destination based on the MAC address table?",c:["Switch","Modem","Hub","Router"],a:[0]},
+{m:7,q:"Which function or operation is performed by the LLC sublayer?",c:["It performs data encapsulation.","It communicates with upper protocol layers.","It adds a header and trailer to a packet to form an OSI Layer 2 PDU.","It is responsible for media access control."],a:[1]},
+{m:7,q:"What happens to runt frames received by a Cisco Ethernet switch?",c:["The frame is returned to the originating network device.","The frame is broadcast to all other devices on the same network.","The frame is sent to the default gateway.","The frame is dropped."],a:[3]},
+{m:7,q:"What addressing information is recorded by a switch to build its MAC address table?",c:["The source Layer 2 address of incoming frames","The destination Layer 3 address of incoming packets","The source Layer 3 address of outgoing packets","The destination Layer 2 address of outgoing frames"],a:[0]},
+{m:7,q:"What is auto-MDIX?",c:["A feature that detects Ethernet cable type","A feature to automatically determine speed and duplex","An Ethernet connector type","A type of Cisco switch"],a:[0]},
+{m:7,q:"What type of address is 01-00-5E-0A-00-02?",c:["An address that reaches every host in the network","An address that reaches one specific host","An address that reaches a specific group of hosts","An address that reaches every host inside a local subnet"],a:[2]},
+{m:7,q:"Which statement is true about MAC addresses?",c:["The first three bytes are used by the vendor assigned OUI.","The ISO is responsible for MAC addresses regulations.","A NIC only needs a MAC address if connected to a WAN.","MAC addresses are implemented by software."],a:[0]},
+{m:7,q:"What are the two sizes (minimum and expected maximum) of an Ethernet frame? (Choose two.)",c:["1024 bytes","1518 bytes","56 bytes","64 bytes","128 bytes"],a:[1,3],multi:true},
+{m:7,q:"Which two functions or operations are performed by the MAC sublayer? (Choose two.)",c:["It is responsible for Media Access Control.","It performs the function of NIC driver software.","It adds a header and trailer to form an OSI Layer 2 PDU.","It handles communication between upper and lower layers.","It adds control information to network protocol layer data."],a:[0,2],multi:true},
+{m:8,q:"Which command can be used on a Windows host to display the routing table?",c:["netstat -r","netstat -s","show ip route","tracert"],a:[0]},
+{m:8,q:"What information is added during encapsulation at OSI Layer 3?",c:["Source and destination MAC","Source and destination port number","Source and destination application protocol","Source and destination IP address"],a:[3]},
+{m:8,q:"How does the network layer use the MTU value?",c:["The MTU is passed to the network layer by the data link layer.","To increase speed of delivery, the network layer ignores the MTU.","The network layer depends on the higher level layers to determine the MTU.","The network layer depends on the data link layer to set the MTU, and adjusts the speed of transmission to accommodate it."],a:[0]},
+{m:8,q:"Which characteristic describes an IPv6 enhancement over IPv4?",c:["IPv6 addresses are based on 128-bit flat addressing as opposed to IPv4 which is based on 32-bit hierarchical addressing.","The IPv6 header is simpler than the IPv4 header, which improves packet handling.","Both IPv4 and IPv6 support authentication, but only IPv6 supports privacy capabilities.","The IPv6 address space is four times bigger than the IPv4 address space."],a:[1]},
+{m:8,q:"Which statement accurately describes a characteristic of IPv4?",c:["All IPv4 addresses are assignable to hosts.","An IPv4 header has fewer fields than an IPv6 header has.","IPv4 natively supports IPsec.","IPv4 has a 32-bit address space."],a:[3]},
+{m:8,q:"When a router receives a packet, what information must be examined to forward the packet to a remote destination?",c:["Source IP address","Source MAC address","Destination MAC address","Destination IP address"],a:[3]},
+{m:8,q:"A computer has to send a packet to a destination host in the same LAN. How will the packet be sent?",c:["The packet will first be sent to the default gateway, and then from the gateway directly to the destination host.","The packet will be sent to the default gateway first, and then, depending on the response, it may be sent to the destination host.","The packet will be sent directly to the destination host.","The packet will be sent only to the default gateway."],a:[2]},
+{m:8,q:"Which IPv4 address can a host use to ping the loopback interface?",c:["126.0.0.0","127.0.0.0","126.0.0.1","127.0.0.1"],a:[3]},
+{m:8,q:"When a connectionless protocol is in use at a lower layer, how is missing data detected and retransmitted?",c:["The best-effort delivery process guarantees that all packets sent are received.","Network layer IP protocols manage the communication sessions if connection-oriented transport services are not available.","Connectionless acknowledgements are used to request retransmission.","Upper-layer connection-oriented protocols keep track of the data received and can request retransmission from the upper-level protocols on the sending host."],a:[3]},
+{m:8,q:"What was the reason for the creation and implementation of IPv6?",c:["To relieve IPv4 address depletion","To provide more address space in the Internet Names Registry","To make reading a 32-bit address easier","To allow NAT support for private addressing"],a:[0]},
+{m:8,q:"Which information is used by routers to forward a data packet toward its destination?",c:["Source data-link address","Destination IP address","Destination data-link address","Source IP address"],a:[1]},
+{m:8,q:"Which field in an IPv4 packet header will typically stay the same during its transmission?",c:["Packet Length","Destination Address","Flag","Time-to-Live"],a:[1]},
+{m:8,q:"Which field in an IPv6 packet is used by the router to determine if a packet has expired and should be dropped?",c:["Hop Limit","Address Unreachable","TTL","No Route to Destination"],a:[0]},
+{m:9,q:"Which router component holds the routing table, ARP cache, and running configuration file?",c:["VRAM","ROM","Flash","RAM"],a:[3]},
+{m:9,q:"What will a Layer 2 switch do when the destination MAC address of a received frame is not in the MAC table?",c:["It notifies the sending host that the frame cannot be delivered.","It forwards the frame out of all ports except for the port at which the frame was received.","It initiates an ARP request.","It broadcasts the frame out of all ports on the switch."],a:[1]},
+{m:9,q:"A PC configured to obtain an IPv4 address automatically shows an entry of 192.168.1.255 ff-ff-ff-ff-ff-ff in the ARP table. Which statement describes this entry?",c:["This is a dynamic map entry.","This is a static map entry.","This entry refers to the PC itself.","This entry maps to the default gateway."],a:[1]},
+{m:9,q:"A cybersecurity analyst believes an attacker is spoofing the MAC address of the default gateway. Which command should the analyst use to view the MAC address?",c:["arp -a","route print","netstat -r","ipconfig /all"],a:[0]},
+{m:9,q:"Which two ICMPv6 messages are used during the Ethernet MAC address resolution process? (Choose two.)",c:["Router solicitation","Neighbor advertisement","Neighbor solicitation","Echo request"],a:[1,2],multi:true},
+{m:9,q:"How does the ARP process use an IPv4 address?",c:["To determine the amount of time a packet takes when traveling from source to destination","To determine the MAC address of the remote destination host","To determine the network number based on the number of bits in the IPv4 address","To determine the MAC address of a device on the same network"],a:[3]},
+{m:9,q:"What is one function of the ARP protocol?",c:["Maintaining a table of domain names with their resolved IP addresses","Resolving an IPv4 address to a MAC address","Mapping a domain name to its IP address","Obtaining an IPv4 address automatically"],a:[1]},
+{m:9,q:"Which action is taken by a Layer 2 switch when it receives a Layer 2 broadcast frame?",c:["It sends the frame to all ports that are registered to forward broadcasts.","It sends the frame to all ports.","It sends the frame to all ports except the port on which it received the frame.","It drops the frame."],a:[2]},
+{m:9,q:"What addresses are mapped by ARP?",c:["Destination IPv4 address to the source MAC address","Destination IPv4 address to the destination host name","Destination MAC address to the source IPv4 address","IPv4 address to a destination MAC address"],a:[3]},
+{m:9,q:"When an IPv4 packet is sent to a host on a remote network, what information is provided by ARP?",c:["The IPv4 address of the destination host","The MAC address of the router interface closest to the sending host","The MAC address of the switch port that connects to the sending host","The IPv4 address of the default gateway"],a:[1]},
+{m:9,q:"The ARP table in a switch maps which two types of address together?",c:["Layer 3 address to a Layer 4 address","Layer 3 address to a Layer 2 address","Layer 2 address to a Layer 4 address","Layer 4 address to a Layer 2 address"],a:[1]},
+{m:9,q:"What is the purpose of ARP in an IPv4 network?",c:["To forward data onward based on the destination MAC address.","To forward data onward based on the destination IP address","To obtain a specific MAC address when an IP address is known","To build the MAC address table in a switch from information gathered"],a:[2]},
+{m:9,q:"Which destination address is used in an ARP request frame?",c:["01-00-5E-00-AA-23","255.255.255.255","FFFF.FFFF.FFFF","0.0.0.0","127.0.0.1"],a:[2]},
+{m:9,q:"What type of information is contained in an ARP table?",c:["Routes to reach destination networks","IPv4 address to MAC address mappings","Domain name to IPv4 address mappings","Switch ports associated with destination MAC addresses"],a:[1]},
+{m:10,q:"A router boots and enters setup mode. What is the reason for this?",c:["Cisco IOS is missing from flash memory.","The configuration file is missing from NVRAM.","The IOS image is corrupt.","The POST process has detected hardware failure."],a:[1]},
+{m:10,q:"Which command is used to encrypt all passwords in a router configuration file?",c:["enable secret <password>","encrypt password","service password-encryption","enable password <password>"],a:[2]},
+{m:10,q:"Company policy requires the most secure method to safeguard access to the privileged exec mode. The password is trustknow1. Which command achieves the highest level of security?",c:["enable password trustknow1","service password-encryption","enable secret trustknow1","secret password trustknow1"],a:[2]},
+{m:10,q:"What will be the response from the router after the command router(config)# hostname portsmouth is entered?",c:["portsmouth#","invalid input detected","router(config-host)#","portsmouth(config)#"],a:[3]},
+{m:10,q:"Which set of commands will allow required login using a password of cisco for out-of-band management?",c:["line console 0 / password cisco / login","line console 0 / password cisco / exit / service password-encryption","line vty 0 4 / password manage / exit / enable password cisco","line vty 0 4 / password cisco / login"],a:[3]},
+{m:10,q:"Which command can be used on a Cisco router to display all interfaces, the IPv4 address assigned, and the current status?",c:["show interface fa0/1","show ip interface brief","ping","show ip route"],a:[1]},
+{m:10,q:"Which CLI mode allows users to access all device commands, such as those used for configuration, management, and troubleshooting?",c:["Interface configuration mode","Privileged EXEC mode","Global configuration mode","User EXEC mode"],a:[1]},
+{m:10,q:"What is the purpose of the startup configuration file on a Cisco router?",c:["To contain the commands used to initially configure a router on startup","To provide a limited backup version of the IOS","To facilitate the basic operation of the hardware components","To contain the configuration commands the router IOS is currently using"],a:[0]},
+{m:10,q:"Which characteristic describes the default gateway of a host computer?",c:["The logical address of the router interface on the same network as the host computer","The logical address assigned to the switch interface connected to the router","The physical address of the switch interface connected to the host computer","The physical address of the router interface on the same network as the host computer"],a:[0]},
+{m:10,q:"What is the purpose of the banner motd command?",c:["It is a way that routers communicate the status of their links with one another.","It configures a message that will identify printed documents to LAN users.","It provides a way to make announcements to those who log in to a router.","It provides an easy way of communicating with any user attached to a router's LANs."],a:[2]},
+{m:10,q:"A technician is trying to type the command login as part of configuring all forms of management access. Which configuration mode should be entered?",c:["Privileged EXEC mode","Global configuration mode","User executive mode","Any line configuration mode"],a:[3]},
+{m:10,q:"What is stored in the NVRAM of a Cisco router?",c:["The running configuration","The bootup instructions","The Cisco IOS","The startup configuration"],a:[3]},
+{m:10,q:"Which statement regarding the service password-encryption command is true?",c:["It is configured in privileged EXEC mode.","It encrypts only line mode passwords.","As soon as the command is entered, all currently set passwords formerly displayed in plain text are encrypted.","To see the passwords in plain text, issue the no service password-encryption command."],a:[2]},
+{m:11,q:"What is the prefix length notation for the subnet mask 255.255.255.224?",c:["/28","/27","/26","/25"],a:[1]},
+{m:11,q:"How many valid host addresses are available on an IPv4 subnet configured with a /26 mask?",c:["192","62","254","190","64"],a:[1]},
+{m:11,q:"Which subnet mask would be used if 5 host bits are available?",c:["255.255.255.0","255.255.255.224","255.255.255.128","255.255.255.240"],a:[1]},
+{m:11,q:"A network administrator subnets 192.168.10.0/24 network into subnets with /26 masks. How many equal-sized subnets are created?",c:["64","16","2","1","4","8"],a:[4]},
+{m:11,q:"What subnet mask is represented by the slash notation /20?",c:["255.255.255.192","255.255.255.0","255.255.224.0","255.255.240.0","255.255.255.248"],a:[3]},
+{m:11,q:"Which statement is true about variable-length subnet masking?",c:["The size of each subnet may be different, depending on requirements.","Subnets may only be subnetted one additional time.","Each subnet is the same size.","Bits are returned, rather than borrowed, to create additional subnets."],a:[0]},
+{m:11,q:"Why does a Layer 3 device perform the ANDing process on a destination IP address and subnet mask?",c:["To identify faulty frames","To identify the broadcast address of the destination network","To identify the host address of the destination host","To identify the network address of the destination network"],a:[3]},
+{m:11,q:"How many usable IP addresses are available on the 192.168.1.0/27 network?",c:["16","32","256","254","30","62"],a:[4]},
+{m:11,q:"Which subnet mask would be used if exactly 4 host bits are available?",c:["255.255.255.128","255.255.255.240","255.255.255.224","255.255.255.248"],a:[1]},
+{m:11,q:"Which two parts are components of an IPv4 address? (Choose two.)",c:["Physical portion","Host portion","Network portion","Subnet portion","Broadcast portion","Logical portion"],a:[1,2],multi:true},
+{m:11,q:"If a network device has a mask of /26, how many IP addresses are available for hosts on this network?",c:["14","32","64","30","16","62"],a:[5]},
+{m:11,q:"What does the IP address 172.17.4.250/24 represent?",c:["Multicast address","Host address","Network address","Broadcast address"],a:[1]},
+{m:11,q:"If a network device has a mask of /28, how many IP addresses are available for hosts on this network?",c:["254","256","262","16","14","32"],a:[4]},
+{m:11,q:"What is the purpose of the subnet mask in conjunction with an IP address?",c:["To determine the subnet to which the host belongs","To mask the IP address to outsiders","To uniquely identify a host on a network","To identify whether the address is public or private"],a:[0]},
+{m:11,q:"A network administrator is variably subnetting a network. The smallest subnet has a mask of 255.255.255.224. How many usable host addresses will this subnet provide?",c:["14","62","6","30","2"],a:[3]},
+{m:12,q:"What is the valid most compressed format possible of the IPv6 address 2001:0DB8:0000:AB00:0000:0000:0000:1234?",c:["2001:DB8 :: AB00 :: 1234","2001:DB8:0:AB:0:1234","2001:DB8:0:AB00 :: 1234","2001:DB8:0:AB :: 1234"],a:[2]},
+{m:12,q:"What is the prefix associated with the IPv6 address 2001:DB8:D15:EA:CC44::1/64?",c:["2001 :: /64","2001:DB8:D15:EA :: /64","2001:DB8 :: /64","2001:DB8:D15:EA:CC44 :: /64"],a:[1]},
+{m:12,q:"What type of address is automatically assigned to an interface when IPv6 is enabled on that interface?",c:["Loopback","Unique local","Global unicast","Link-local"],a:[3]},
+{m:12,q:"Which IPv6 network prefix is only intended for local links and cannot be routed?",c:["FE80 :: /10","2001 :: /3","FF00 :: /12","FC00 :: /7"],a:[0]},
+{m:12,q:"What is the purpose of the command ping ::1?",c:["It tests the internal configuration of an IPv6 host.","It tests the multicast connectivity to all hosts on the subnet.","It tests the broadcast capability of all hosts on the subnet.","It tests the reachability of the default gateway for the network."],a:[0]},
+{m:12,q:"What is the interface ID of the IPv6 address 2001:DB8::1000:A9CD:47FF:FE57:FE94/64?",c:["FE94","FE57:FE94","A9CD:47FF:FE57:FE94","47FF:FE57:FE94","1000:A9CD:47FF:FE57:FE94"],a:[2]},
+{m:12,q:"What is the network address for the IPv6 address 2001:DB8:AA04:B5::1/64?",c:["2001:DB8:AA04:B5 :: /64","2001 :: /64","2001:DB8 :: /64","2001:DB8:AA04 :: /64"],a:[0]},
+{m:12,q:"Which address type is not supported in IPv6?",c:["Unicast","Broadcast","Multicast","Private"],a:[1]},
+{m:12,q:"What is indicated by a successful ping to the ::1 IPv6 address?",c:["All hosts on the local link are available.","The default gateway address is correctly configured.","IP is properly installed on the host.","The link-local address is correctly configured.","The host is cabled properly."],a:[2]},
+{m:12,q:"What is the most compressed representation of the IPv6 address 2001:0db8:0000:abcd:0000:0000:0000:0001?",c:["2001:0db8:abcd :: 0001","2001:db8:0:abcd :: 1","2001:0db8:abcd :: 1","2001:db8 :: abcd:0:1","2001:0db8:0000:abcd :: 1"],a:[1]},
+{m:12,q:"What is the minimum configuration for a router interface that is enabled for IPv6?",c:["To have a link-local IPv6 address","To have both an IPv4 and an IPv6 address","To have a self-generated loopback address","To have both a link-local and a global unicast IPv6 address"],a:[0]},
+{m:12,q:"At a minimum, which address is required on IPv6-enabled interfaces?",c:["Site local","Global unicast","Link-local","Unique local"],a:[2]},
+{m:12,q:"What are three parts of an IPv6 global unicast address? (Choose three.)",c:["A global routing prefix used to identify the portion of the network address provided by a local administrator","An interface ID used to identify the local host on the network","A global routing prefix used to identify the network portion of the address provided by an ISP","A subnet ID used to identify networks inside of the local enterprise site","An interface ID used to identify the local network for a particular host"],a:[1,2,3],multi:true},
+{m:12,q:"Your organization is issued the IPv6 prefix 2001:db8:130f::/48 by your service provider. How many bits are available to create /64 subnetworks if interface ID bits are not borrowed?",c:["16","128","80","8"],a:[0]},
+{m:12,q:"Which type of IPv6 address is not routable and used only for communication on a single subnet?",c:["Unspecified address","Unique local address","Link-local address","Loopback address","Global unicast address"],a:[2]},
+{m:13,q:"A technician only has the IP address of the end point device and suspects a defective node is dropping packets. What command can the technician use to identify the faulty node?",c:["ping","ipconfig /displaydns","ipconfig /flushdns","tracert"],a:[3]},
+{m:13,q:"A helpdesk technician asks the user to ping the IP address of the default gateway. What is the purpose for this ping command?",c:["To resolve the domain name of the file server to its IP address","To test that the host has the capability to reach hosts on other networks","To request that the gateway forward the connection request to the file server","To obtain a dynamic IP address from the server"],a:[1]},
+{m:13,q:"What is a function of the tracert command that differs from the ping command?",c:["The tracert command is used to test the connectivity between two devices.","The tracert command sends one ICMP message to each hop in the path.","The tracert command reaches the destination faster.","The tracert command shows the information of routers in the path."],a:[3]},
+{m:13,q:"Which ICMP message is used by the traceroute utility during the process of finding the path between two end hosts?",c:["Ping","Time exceeded","Destination unreachable","Redirect"],a:[1]},
+{m:13,q:"Which utility uses the Internet Control Messaging Protocol (ICMP)?",c:["DNS","Ping","NTP","RIP"],a:[1]},
+{m:13,q:"Which protocol is used by IPv4 and IPv6 to provide error messaging?",c:["NDP","DHCP","ARP","ICMP"],a:[3]},
+{m:13,q:"A network administrator is testing connectivity by issuing the ping command on a router. Which symbol indicates that a time expired during the wait for an ICMP echo reply?",c:[". (period)","!","U","$"],a:[0]},
+{m:13,q:"Which two things can be determined by using the ping command? (Choose two.)",c:["The average time it takes a packet to reach the destination and for the response to return to the source","The average time it takes each router in the path to respond","The number of routers between the source and destination device","The IP address of the router nearest the destination device","The destination device is reachable through the network"],a:[0,4],multi:true},
+{m:13,q:"A user pings 127.0.0.1 and receives four positive replies but cannot access the internet. What conclusion can be drawn?",c:["The PC can access the network. The problem exists beyond the local network.","The TCP/IP implementation is functional.","The IP address obtained from the DHCP server is correct.","The PC can access the Internet. However, the web browser may not work."],a:[1]},
+{m:13,q:"Which command can be used to test connectivity between two devices using echo request and echo reply messages?",c:["ipconfig","ping","ICMP","netstat"],a:[1]},
+{m:13,q:"What field content is used by ICMPv6 to determine that a packet has expired?",c:["CRC field","Time Exceeded field","Hop Limit field","TTL field"],a:[2]},
+{m:13,q:"Which protocol provides feedback from the destination host to the source host about errors in packet delivery?",c:["ICMP","BOOTP","DNS","ARP"],a:[0]},
+{m:13,q:"A network administrator can successfully ping www.cisco.com but cannot ping the company web server at an ISP in another city. Which tool would help identify the specific router where the packet was lost?",c:["netstat","ipconfig","traceroute","telnet"],a:[2]},
+{m:13,q:"What message is sent by a host to check the uniqueness of an IPv6 address before using that address?",c:["Router solicitation","ARP request","Echo request","Neighbor solicitation"],a:[3]},
+{m:14,q:"Which transport layer feature is used to establish a connection-oriented session?",c:["TCP port number","UDP sequence number","TCP 3-way handshake","UDP ACK flag"],a:[2]},
+{m:14,q:"What is the complete range of TCP and UDP well-known ports?",c:["256 - 1023","0 to 255","1024 - 49151","0 to 1023"],a:[3]},
+{m:14,q:"What is a socket?",c:["The combination of the source and destination sequence and acknowledgment numbers","The combination of a source IP address and port number or a destination IP address and port number","The combination of the source and destination IP address and source and destination Ethernet address","The combination of the source and destination sequence numbers and port numbers"],a:[1]},
+{m:14,q:"How does a networked server manage requests from multiple clients for different services?",c:["Each request has a combination of source and destination port numbers, coming from a unique IP address.","The server uses IP addresses to identify different services.","The server sends all requests through a default gateway.","Each request is tracked through the physical address of the client."],a:[0]},
+{m:14,q:"What happens if part of an FTP message is not delivered to the destination?",c:["The entire FTP message is re-sent.","The message is lost because FTP does not use a reliable delivery method.","The part of the FTP message that was lost is re-sent.","The FTP source host sends a query to the destination host."],a:[2]},
+{m:14,q:"What type of applications are best suited for using UDP?",c:["Applications that are sensitive to delay","Applications that need reliable delivery","Applications that are sensitive to packet loss","Applications that require retransmission of lost segments"],a:[0]},
+{m:14,q:"Network congestion has resulted in the source learning of the loss of TCP segments sent to the destination. What is one way TCP addresses this?",c:["The destination sends fewer acknowledgement messages to conserve bandwidth.","The destination decreases the window size.","The source decreases the amount of data it transmits before receiving an acknowledgement from the destination.","The source decreases the window size to decrease the rate of transmission from the destination."],a:[2]},
+{m:14,q:"Which two operations are provided by TCP but not by UDP? (Choose two.)",c:["Identifying the applications","Identifying individual conversations","Retransmitting any unacknowledged data","Reconstructing data in the order received","Acknowledging received data"],a:[2,4],multi:true},
+{m:14,q:"What is the purpose of using a source port number in a TCP communication?",c:["To notify the remote device that the conversation is over","To assemble the segments that arrived out of order","To keep track of multiple conversations between devices","To inquire for a nonreceived segment"],a:[2]},
+{m:14,q:"Which two flags in the TCP header are used in a TCP three-way handshake? (Choose two.)",c:["ACK","PSH","FIN","RST","URG","SYN"],a:[0,5],multi:true},
+{m:14,q:"What TCP mechanism is used to enhance performance by allowing a device to continuously send a steady stream of segments as long as it is receiving necessary acknowledgements?",c:["Socket pair","Sliding window","Three-way handshake","Two-way handshake"],a:[1]},
+{m:14,q:"Which action is performed by a client when establishing communication with a server via the use of UDP?",c:["The client sends a synchronization segment to begin the session.","The client sets the window size for the session.","The client randomly selects a source port number.","The client sends an ISN to the server to start the 3-way handshake."],a:[2]},
+{m:14,q:"Which two services or protocols use the preferred UDP protocol for fast transmission and low overhead? (Choose two.)",c:["VoIP","HTTP","POP3","DNS","FTP"],a:[0,3],multi:true},
+{m:14,q:"Which number or set of numbers represents a socket?",c:["01-23-45-67-89-AB","21","192.168.1.1:80","10.1.1.15"],a:[2]},
+{m:14,q:"What is a responsibility of transport layer protocols?",c:["Providing network access","Determining the best path to forward a packet","Tracking individual conversations","Translating private IP addresses to public IP addresses"],a:[2]},
+{m:15,q:"On a home network, which device is most likely to provide dynamic IPv4 addressing to clients on the home network?",c:["A dedicated file server","A home router","An ISP DHCP server","A DNS server"],a:[1]},
+{m:15,q:"What part of the URL http://www.cisco.com/index.html represents the top-level DNS domain?",c:[".com","www","http","index"],a:[0]},
+{m:15,q:"What are two characteristics of the application layer of the TCP/IP model? (Choose two.)",c:["Responsibility for logical addressing","Responsibility for physical addressing","Closest to the end user","The creation and maintenance of dialogue between source and destination applications"],a:[2,3],multi:true},
+{m:15,q:"What message type is used by an HTTP client to request data from a web server?",c:["PUT","GET","ACK","POST"],a:[1]},
+{m:15,q:"Which protocol can be used to transfer messages from an email server to an email client?",c:["SNMP","SMTP","HTTP","POP3"],a:[3]},
+{m:15,q:"Which application layer protocol is used to provide file-sharing and print services to Microsoft applications?",c:["HTTP","SMTP","DHCP","SMB"],a:[3]},
+{m:15,q:"Which three protocols or standards are used at the application layer of the TCP/IP model? (Choose three.)",c:["HTTP","MPEG","GIF","UDP","IP","TCP"],a:[0,1,2],multi:true},
+{m:15,q:"Why is DHCP for IPv4 preferred for use on large networks?",c:["It is a more efficient way to manage IPv4 addresses than static address assignment.","Hosts on large networks require more IPv4 addressing configuration settings than do hosts on small networks.","DHCP uses a reliable transport layer protocol.","It prevents sharing of files that are copyrighted.","Large networks send more requests for domain to IP address resolution than do smaller networks."],a:[0]},
+{m:15,q:"An author is uploading a document from a personal computer to a file server. What role is the personal computer assuming?",c:["Transient","Client","Slave","Master","Server"],a:[1]},
+{m:15,q:"Which statement is true about FTP?",c:["FTP is a peer-to-peer application.","FTP does not provide reliability during data transmission.","The client can choose if FTP is going to establish one or two connections with the server.","The client can download data from or upload data to the server."],a:[3]},
+{m:15,q:"A wireless host needs to request an IPv4 address. What protocol would be used to process the request?",c:["HTTP","SNMP","ICMP","FTP","DHCP"],a:[4]},
+{m:15,q:"Which TCP/IP model layer is closest to the end user?",c:["Internet","Network access","Transport","Application"],a:[3]},
+{m:15,q:"When retrieving email messages, which protocol allows for easy, centralized storage and backup of emails desirable for a small- to medium-sized business?",c:["HTTPS","POP","IMAP","SMTP"],a:[2]},
+{m:15,q:"Which protocol uses encryption?",c:["FTP","DNS","HTTPS","DHCP"],a:[2]},
+{m:15,q:"Which two tasks can be performed by a local DNS server? (Choose two.)",c:["Providing IP addresses to local hosts","Mapping name-to-IP addresses for internal hosts","Allowing data transfer between two network devices","Forwarding name resolution requests between servers","Retrieving email messages"],a:[1,3],multi:true},
+{m:16,q:"Which component is designed to protect against unauthorized communications to and from a computer?",c:["Port scanner","Security center","Antivirus","Firewall","Antimalware"],a:[3]},
+{m:16,q:"Which command will block login attempts on RouterA for a period of 30 seconds if there are 2 failed login attempts within 10 seconds?",c:["login block-for 2 attempts 30 within 10","login block-for 30 attempts 10 within 2","login block-for 10 attempts 2 within 30","login block-for 30 attempts 2 within 10"],a:[3]},
+{m:16,q:"What is the purpose of the network security accounting function?",c:["To keep track of the actions of a user","To provide challenge and response questions","To require users to prove who they are","To determine which resources a user can access"],a:[0]},
+{m:16,q:"What type of attack may involve the use of tools such as nslookup and fping?",c:["Worm attack","Access attack","Reconnaissance attack","Denial of service attack"],a:[2]},
+{m:16,q:"Which benefit does SSH offer over Telnet for remotely managing a router?",c:["Connections via multiple VTY lines","TCP usage","Authorization","Encryption"],a:[3]},
+{m:16,q:"What is one of the most effective security tools available for protecting users from external threats?",c:["Password encryption techniques","Routers that run AAA services","Firewalls","Patch servers"],a:[2]},
+{m:16,q:"Which type of network threat is intended to prevent authorized users from accessing resources?",c:["Trust exploitation","DoS attacks","Access attacks","Reconnaissance attacks"],a:[1]},
+{m:16,q:"Which three services are provided by the AAA framework? (Choose three.)",c:["Automation","Autoconfiguration","Authentication","Accounting","Autobalancing","Authorization"],a:[2,3,5],multi:true},
+{m:16,q:"Which malicious code attack is self-contained and tries to exploit a specific vulnerability in a system being attacked?",c:["Trojan horse","Worm","Virus","Social engineering"],a:[1]},
+{m:16,q:"Some routers and switches in a wiring closet malfunctioned after an air conditioning unit failed. What type of threat does this situation describe?",c:["Maintenance","Electrical","Environmental","Configuration"],a:[2]},
+{m:16,q:"What does the term vulnerability mean?",c:["A method of attack to exploit a target","A computer that contains sensitive information","A weakness that makes a target susceptible to an attack","A known target or victim machine","A potential threat that a hacker creates"],a:[2]},
+{m:16,q:"What three configuration steps must be performed to implement SSH access to a router? (Choose three.)",c:["An enable mode password","A unique hostname","A password on the console line","An encrypted password","An IP domain name","A user account"],a:[1,4,5],multi:true},
+{m:16,q:"What is the objective of a network reconnaissance attack?",c:["Denying access to resources by legitimate users","Discovery and mapping of systems","Unauthorized manipulation of data","Disabling network systems or services"],a:[1]},
+{m:16,q:"For security reasons a network administrator needs to ensure that local computers cannot ping each other. Which settings can accomplish this task?",c:["MAC address settings","Smartcard settings","File system settings","Firewall settings"],a:[3]},
+{m:16,q:"A network administrator establishes a connection to a switch via SSH. What characteristic uniquely describes the SSH connection?",c:["Direct access to the switch through the use of a terminal emulation program","Remote access to a switch where data is encrypted during the session","Remote access to the switch through the use of a telephone dialup connection","On-site access to a switch through the use of a directly connected PC and a console cable","Out-of-band access to a switch through the use of a virtual terminal with password authentication"],a:[1]},
+{m:17,q:"Which network design consideration would be more important to a large corporation than to a small business?",c:["Firewall","Low port density switch","Redundancy","Internet router"],a:[2]},
+{m:17,q:"A newly hired network technician is ordering new hardware for a small business with a large growth forecast. Which primary factor should the technician be concerned with?",c:["Devices with a fixed number and type of interfaces","Devices that have support for network monitoring","Redundant devices","Devices with support for modularity"],a:[3]},
+{m:17,q:"What type of traffic would most likely have the highest priority through the network?",c:["SNMP","Voice","Instant messaging","FTP"],a:[1]},
+{m:17,q:"A network technician is investigating network connectivity from a PC to a remote host with the address 10.1.1.5. Which command will display the path to the remote host?",c:["tracert 10.1.1.5","traceroute 10.1.1.5","trace 10.1.1.5","ping 10.1.1.5"],a:[0]},
+{m:17,q:"A user can reach a site by typing http://72.163.4.161 in a web browser, but not by typing http://www.cisco.com. What is the issue?",c:["Default gateway","DNS","TCP/IP protocol stack","DHCP"],a:[1]},
+{m:17,q:"Where are Cisco IOS debug output messages sent by default?",c:["Console line","Memory buffers","Vty lines","Syslog server"],a:[0]},
+{m:17,q:"Which element of scaling a network involves identifying the physical and logical topologies?",c:["Cost analysis","Traffic analysis","Device inventory","Network documentation"],a:[3]},
+{m:17,q:"What mechanism can be implemented in a small network to help minimize network latency for real-time streaming applications?",c:["QoS","PoE","ICMP","AAA"],a:[0]},
+{m:17,q:"Which process failed if a computer cannot access the internet and received an IP address of 169.254.142.5?",c:["DNS","DHCP","HTTP","IP"],a:[1]},
+{m:17,q:"A small company has only one router as the exit point to its ISP. Which solution could be adopted to maintain connectivity if the router or its connection to the ISP fails?",c:["Activate another router interface connected to the ISP.","Add more interfaces to the router connected to the internal network.","Purchase a second least-cost link from another ISP to connect to this router.","Have a second router connected to another ISP."],a:[3]},
+{m:17,q:"When should an administrator establish a network baseline?",c:["At regular intervals over a period of time","When the traffic is at peak in the network","At the lowest point of traffic in the network","When there is a sudden drop in traffic"],a:[0]},
+{m:17,q:"Which two traffic types require delay sensitive delivery? (Choose two.)",c:["Video","Email","FTP","Web","Voice"],a:[0,4],multi:true},
+{m:17,q:"A network technician suspects a duplex mismatch between two Cisco switches. Which command would the technician use to see the Layer 1 and Layer 2 details of a switch port?",c:["show running-config","show ip interface brief","show mac-address-table","show interfaces"],a:[3]},
+{m:17,q:"Which statement is true about CDP on a Cisco device?",c:["CDP can only be implemented in switches.","CDP can be disabled globally or on a specific interface.","The show cdp neighbor detail command will reveal the IP address of a neighbor only if there is Layer 3 connectivity.","To disable CDP globally, the no cdp enable command in interface configuration mode must be used."],a:[1]},
+{m:17,q:"What factor should be considered in the design of a small network when devices are being chosen?",c:["Redundancy","ISP","Traffic analysis","Cost of devices"],a:[3]},
+// Checkpoint questions
+{m:0,q:"What information does the loopback test provide?",c:["The device has the correct IP address on the network.","The TCP/IP stack on the device is working correctly.","The Ethernet cable is working correctly.","The device has end-to-end connectivity.","DHCP is working correctly."],a:[1]},
+{m:0,q:"How do hosts ensure that their packets are directed to the correct network destination?",c:["They always direct their packets to the default gateway.","They have to keep their own local routing table that contains a route to the loopback interface, a local network route, and a remote default route.","They search in their own local routing table for a route to the network destination address and pass this information to the default gateway.","They send a query packet to the default gateway asking for the best route."],a:[1]},
+{m:0,q:"Within a production network, what is the purpose of configuring a switch with a default gateway address?",c:["It provides a next-hop address for all traffic that flows through the switch.","The default gateway address is used to forward packets originating from the switch to remote networks.","A switch must have a default gateway to be accessible by Telnet and SSH.","Hosts connected to the switch can use the switch default gateway address to forward packets to a remote destination."],a:[1]},
+{m:0,q:"Which field in the IPv6 header can be used to inform routers and switches to maintain the same path for packets in the same conversation when transporting real-time applications?",c:["Traffic Class","Next Header","Flow Label","Differentiated Services"],a:[2]},
+{m:0,q:"Which statement describes a feature of the IP protocol?",c:["MAC addresses are used during the IP packet encapsulation.","IP relies on Layer 2 protocols for transmission error control.","IP encapsulation is modified based on network media.","IP relies on upper layer services to handle situations of missing or out-of-order packets."],a:[3]},
+{m:0,q:"What IPv4 header field identifies the upper layer protocol carried in the packet?",c:["Version","Identification","Differentiated Services","Protocol"],a:[3]},
+{m:0,q:"Which parameter does the router use to choose the path to the destination when there are multiple routes available?",c:["The higher gateway IP address to get to the destination network","The lower metric value that is associated with the destination network","The lower gateway IP address to get to the destination network","The higher metric value that is associated with the destination network"],a:[1]},
+{m:0,q:"What is one advantage that the IPv6 simplified header offers over IPv4?",c:["Efficient packet handling","Smaller-sized header","Smaller-sized source and destination IP addresses","Little requirement for processing checksums"],a:[0]},
+{m:0,q:"Which field in the IPv4 header is used to prevent a packet from traversing a network endlessly?",c:["Differentiated Services","Acknowledgment Number","Sequence Number","Time-to-Live"],a:[3]},
+{m:0,q:"What is the aim of an ARP spoofing attack?",c:["To flood the network with ARP reply broadcasts","To overwhelm network hosts with ARP requests","To associate IP addresses to the wrong MAC address","To fill switch MAC address tables with bogus addresses"],a:[2]},
+{m:0,q:"A network technician issues the arp -d * command on a PC after the router connected to the LAN is reconfigured. What is the result?",c:["The ARP cache is cleared.","The ARP cache is synchronized with the router interface.","The detailed information of the ARP cache is displayed.","The current content of the ARP cache is displayed."],a:[0]},
+{m:0,q:"Which destination address is used in an ARP request frame?",c:["AAAA.AAAA.AAAA","255.255.255.255","0.0.0.0","FFFF.FFFF.FFFF","The physical address of the destination host"],a:[3]},
+{m:0,q:"Which statement describes the treatment of ARP requests on the local link?",c:["They are received and processed only by the target device.","They are received and processed by every device on the local network.","They are dropped by all switches on the local network.","They must be forwarded by all routers on the local network."],a:[1]},
+{m:0,q:"What statement describes the function of the Address Resolution Protocol?",c:["ARP is used to discover the MAC address of any host on a different network.","ARP is used to discover the IP address of any host on a different network.","ARP is used to discover the MAC address of any host on the local network.","ARP is used to discover the IP address of any host on the local network."],a:[2]},
+{m:0,q:"What are two functions of NVRAM? (Choose two.)",c:["To store the routing table","To store the startup configuration file","To contain the running configuration file","To store the ARP table","To retain contents when power is removed"],a:[1,4],multi:true},
+{m:0,q:"What happens when the transport input ssh command is entered on the switch vty lines?",c:["The SSH client on the switch is enabled.","Communication between the switch and remote users is encrypted.","The switch requires remote connections via a proprietary client software.","The switch requires a username/password combination for remote access."],a:[1]},
+{m:0,q:"What are two potential network problems that can result from ARP operation? (Choose two.)",c:["Manually configuring static ARP associations could facilitate ARP poisoning or MAC address spoofing.","Large numbers of ARP request broadcasts could cause the host MAC address table to overflow.","On large networks with low bandwidth, multiple ARP broadcasts could cause data communication delays.","Multiple ARP replies result in the switch MAC address table containing entries that match MAC addresses of hosts connected to the relevant switch port.","Network attackers could manipulate MAC address and IP address mappings in ARP messages with the intent of intercepting network traffic."],a:[2,4],multi:true},
+{m:0,q:"What will happen if the default gateway address is incorrectly configured on a host?",c:["The host will have to use ARP to determine the correct address of the default gateway.","A ping from the host to 127.0.0.1 would not be successful.","The switch will not forward packets initiated by the host.","The host cannot communicate with hosts in other networks.","The host cannot communicate with other hosts in the local network."],a:[3]},
+{m:0,q:"What is the effect of using the Router# copy running-config startup-config command on a router?",c:["The contents of ROM will change.","The contents of NVRAM will change.","The contents of RAM will change.","The contents of flash will change."],a:[1]},
+{m:0,q:"Which term describes a field in the IPv4 packet header used to detect corruption in the IPv4 header?",c:["Header checksum","Protocol","Source IPv4 address","TTL"],a:[0]},
+{m:0,q:"What property of ARP allows MAC addresses of frequently used servers to be fixed in the ARP table?",c:["The type field 0x806 appears in the header of the Ethernet frame.","Entries in an ARP table are time-stamped and are purged after the timeout expires.","The port-to-MAC address table on a switch has the same entries as the ARP table on the switch.","A static IP-to-MAC address entry can be entered manually into an ARP table."],a:[3]},
+{m:0,q:"A network administrator connects a new host to the Registrar LAN. The host needs to communicate with remote networks. The interface gi0/1 is configured with IP address 192.168.235.234 for the Registrar LAN. What IP address would be configured as the default gateway on the new host?",c:["10.234.235.254","203.0.113.3","192.168.235.1","192.168.234.114","192.168.235.234"],a:[4]},
+];
+
+const modules = [...new Set(ALL_Q.map(q=>q.m))].sort((a,b)=>a-b);
+let selectedModules = new Set(['all']);
+let questions = [];
+let current = 0;
+let skipped = [];
+let answers = {};
+let isReviewingSkipped = false;
+let reviewIndex = 0;
+
+function modCount(m) { return ALL_Q.filter(q=>q.m===m).length; }
+
+// Build home
+function buildHome() {
+  const g = document.getElementById('moduleGrid');
+  let html = `<div class="mod-card all-card ${selectedModules.has('all')?'selected':''}" onclick="toggleModule('all')">
+    <div class="mod-num">ALL</div>
+    <div class="mod-label">All Modules</div>
+    <div class="mod-count">${ALL_Q.length} questions</div>
+  </div>`;
+  modules.forEach(m=>{
+    html+=`<div class="mod-card ${selectedModules.has(m)&&!selectedModules.has('all')?'selected':''}" onclick="toggleModule(${m})">
+      <div class="mod-num">MOD ${m===0?'CP':m}</div>
+      <div class="mod-label">${MOD_NAMES[m]}</div>
+      <div class="mod-count">${modCount(m)} Qs</div>
+    </div>`;
+  });
+  g.innerHTML = html;
+}
+
+function toggleModule(m) {
+  if(m==='all') { selectedModules = new Set(['all']); }
+  else {
+    selectedModules.delete('all');
+    if(selectedModules.has(m)) selectedModules.delete(m);
+    else selectedModules.add(m);
+    if(selectedModules.size===0) selectedModules = new Set(['all']);
+  }
+  buildHome();
+}
+
+function startQuiz() {
+  let pool = selectedModules.has('all') ? ALL_Q : ALL_Q.filter(q=>selectedModules.has(q.m));
+  questions = [...pool];
+  current = 0; skipped = []; answers = {}; isReviewingSkipped = false; reviewIndex = 0;
+  showScreen('quiz');
+  renderQuestion();
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function goHome() { showScreen('home'); buildHome(); }
+
+function renderQuestion() {
+  const idx = isReviewingSkipped ? skipped[reviewIndex] : current;
+  const q = questions[idx];
+  const answered = answers[idx] !== undefined;
+  const total = questions.length;
+  const done = Object.keys(answers).length;
+  const pct = Math.round((done/total)*100);
+
+  document.getElementById('qCounter').textContent = `${done} / ${total} answered`;
+  document.getElementById('progressFill').style.width = pct+'%';
+  const sb = document.getElementById('skipBadge');
+  if(skipped.length>0){ sb.style.display=''; sb.textContent=`${skipped.length} skipped`; }
+  else sb.style.display='none';
+
+  const multi = q.multi;
+  const sel = answers[idx] ? answers[idx].selected : [];
+  const submitted = answers[idx] ? answers[idx].submitted : false;
+
+  let choicesHtml = q.c.map((ch,i)=>{
+    let cls = 'choice-btn';
+    if(submitted){
+      if(q.a.includes(i)) cls+=' correct';
+      else if(sel.includes(i)) cls+=' wrong';
+    } else if(sel.includes(i)) cls+=' selected';
+    return `<button class="${cls}" id="ch${i}" onclick="selectChoice(${idx},${i})" ${submitted?'disabled':''}>
+      <span class="choice-letter">${LETTERS[i]}</span><span>${ch}</span>
+    </button>`;
+  }).join('');
+
+  let feedbackHtml = '';
+  if(submitted){
+    const correct = q.a.every(x=>sel.includes(x))&&sel.every(x=>q.a.includes(x));
+    feedbackHtml = `<div class="feedback-box ${correct?'correct':'wrong'}">${correct?'✓ Correct!':'✗ Incorrect. Correct answer'+(q.a.length>1?'s':'')+': '+q.a.map(x=>LETTERS[x]).join(', ')+'.'}</div>`;
+  }
+
+  let actionsHtml = '';
+  if(!submitted){
+    actionsHtml = `<div class="q-actions">
+      <button class="q-btn primary" onclick="submitAnswer(${idx})">SUBMIT</button>
+      <button class="q-btn skip" onclick="skipQuestion(${idx})">SKIP →</button>
+    </div>`;
+  } else {
+    if(isReviewingSkipped){
+      const hasMore = reviewIndex < skipped.length-1;
+      actionsHtml = `<div class="q-actions">
+        ${hasMore?`<button class="q-btn primary" onclick="nextSkipped()">NEXT SKIPPED →</button>`:''}
+        <button class="q-btn secondary" onclick="goToResults()">SEE RESULTS</button>
+      </div>`;
+    } else {
+      const nextUnanswered = findNextUnanswered(idx+1);
+      actionsHtml = `<div class="q-actions">
+        ${nextUnanswered!==-1?`<button class="q-btn primary" onclick="goToQ(${nextUnanswered})">NEXT →</button>`:''}
+        ${skipped.length>0?`<button class="q-btn skip" onclick="startReviewSkipped()">REVIEW SKIPPED (${skipped.length})</button>`:''}
+        <button class="q-btn secondary" onclick="goToResults()">SEE RESULTS</button>
+      </div>`;
+    }
+  }
+
+  let skippedPanel = '';
+  if(skipped.length>0&&!isReviewingSkipped&&!submitted){
+    const items = skipped.map((si,ri)=>`<span class="skipped-item" onclick="jumpToSkipped(${ri})">Q${si+1}</span>`).join('');
+    skippedPanel = `<div class="skipped-panel"><h3>SKIPPED QUESTIONS</h3><div class="skipped-list">${items}</div></div>`;
+  }
+
+  document.getElementById('quizBody').innerHTML = `
+    <div class="fade-in">
+      ${skippedPanel}
+      <div class="q-module-tag">MODULE ${q.m===0?'CHECKPOINT':q.m} — ${MOD_NAMES[q.m]} &nbsp; Q${idx+1}</div>
+      ${isReviewingSkipped?'<div class="q-skipped-tag">⚑ RETURNING TO SKIPPED QUESTION</div>':''}
+      <div class="q-text">${q.q}</div>
+      ${multi?'<div class="multi-hint">⚑ Select all that apply</div>':''}
+      <div class="choices">${choicesHtml}</div>
+      ${feedbackHtml}
+      ${actionsHtml}
+    </div>`;
+}
+
+function selectChoice(idx, i){
+  const q = questions[idx];
+  if(!answers[idx]) answers[idx] = {selected:[], submitted:false};
+  if(answers[idx].submitted) return;
+  if(q.multi){
+    const s = answers[idx].selected;
+    if(s.includes(i)) answers[idx].selected = s.filter(x=>x!==i);
+    else answers[idx].selected.push(i);
+  } else {
+    answers[idx].selected = [i];
+  }
+  renderQuestion();
+}
+
+function submitAnswer(idx){
+  if(!answers[idx]||answers[idx].selected.length===0) return;
+  answers[idx].submitted = true;
+  renderQuestion();
+}
+
+function skipQuestion(idx){
+  if(!skipped.includes(idx)) skipped.push(idx);
+  const next = findNextUnanswered(idx+1);
+  if(next!==-1){ current=next; isReviewingSkipped=false; }
+  else if(skipped.filter(s=>!answers[s]?.submitted).length>0){
+    startReviewSkipped(); return;
+  } else { goToResults(); return; }
+  renderQuestion();
+}
+
+function findNextUnanswered(from){
+  for(let i=from;i<questions.length;i++){
+    if(!skipped.includes(i)&&!answers[i]?.submitted) return i;
+  }
+  return -1;
+}
+
+function goToQ(idx){ current=idx; isReviewingSkipped=false; renderQuestion(); }
+
+function startReviewSkipped(){
+  const pending = skipped.filter(s=>!answers[s]?.submitted);
+  if(pending.length===0){goToResults();return;}
+  skipped = pending;
+  isReviewingSkipped=true; reviewIndex=0; renderQuestion();
+}
+
+function nextSkipped(){
+  reviewIndex++;
+  if(reviewIndex>=skipped.length){goToResults();return;}
+  renderQuestion();
+}
+
+function jumpToSkipped(ri){ isReviewingSkipped=true; reviewIndex=ri; renderQuestion(); }
+
+function goToResults(){
+  showScreen('results');
+  buildResults();
+}
+
+function buildResults(){
+  const total = questions.length;
+  const answeredKeys = Object.keys(answers).filter(k=>answers[k].submitted).map(Number);
+  let correct=0, wrong=[], skippedFinal=[];
+  for(let i=0;i<total;i++){
+    if(answers[i]&&answers[i].submitted){
+      const q=questions[i]; const sel=answers[i].selected;
+      if(q.a.every(x=>sel.includes(x))&&sel.every(x=>q.a.includes(x))) correct++;
+      else wrong.push(i);
+    } else { skippedFinal.push(i); }
+  }
+  const answered = answeredKeys.length;
+  const pct = answered>0?Math.round((correct/answered)*100):0;
+  let scoreColor = pct>=90?'#38e5a0':pct>=70?'#5b8cff':pct>=50?'#ffb547':'#ff5c6a';
+
+  // module breakdown for filter
+  const wrongMods = [...new Set(wrong.map(i=>questions[i].m))];
+
+  let wrongHtml = wrong.length>0 ? `
+    <div class="results-section-title">INCORRECT ANSWERS — ${wrong.length}</div>
+    <div class="mod-filter-row" id="filterRow">
+      <button class="mf-btn active" onclick="filterWrong('all',this)">All</button>
+      ${wrongMods.map(m=>`<button class="mf-btn" onclick="filterWrong(${m},this)">Mod ${m===0?'CP':m}</button>`).join('')}
+    </div>
+    <div class="review-list" id="wrongList">
+      ${wrong.map(i=>{
+        const q=questions[i]; const sel=answers[i].selected;
+        return `<div class="review-card wrong-card" data-mod="${q.m}">
+          <div class="review-qnum">MODULE ${q.m===0?'CHECKPOINT':q.m} · QUESTION ${i+1}</div>
+          <div class="review-q">${q.q}</div>
+          <div class="review-your">✗ Your answer: ${sel.map(x=>LETTERS[x]).join(', ')} — ${sel.map(x=>q.c[x]).join(' / ')}</div>
+          <div class="review-correct">✓ Correct: ${q.a.map(x=>LETTERS[x]).join(', ')} — ${q.a.map(x=>q.c[x]).join(' / ')}</div>
+        </div>`;
+      }).join('')}
+    </div>` : `<div class="results-section-title">INCORRECT ANSWERS</div><p style="color:var(--muted);font-size:14px;margin-bottom:2rem;">None! Perfect score on answered questions.</p>`;
+
+  let skippedHtml = skippedFinal.length>0 ? `
+    <div class="results-section-title" style="margin-top:2rem;">SKIPPED / UNANSWERED — ${skippedFinal.length}</div>
+    <div class="review-list">
+      ${skippedFinal.map(i=>{
+        const q=questions[i];
+        return `<div class="review-card skipped-card">
+          <div class="review-qnum">MODULE ${q.m===0?'CHECKPOINT':q.m} · QUESTION ${i+1}</div>
+          <div class="review-q">${q.q}</div>
+          <div class="review-skipped-label">⚑ Not answered</div>
+          <div class="review-correct" style="margin-top:6px;">Correct: ${q.a.map(x=>LETTERS[x]).join(', ')} — ${q.a.map(x=>q.c[x]).join(' / ')}</div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  document.getElementById('resultsWrap').innerHTML = `
+    <div class="results-header">
+      <div class="results-title">QUIZ COMPLETE</div>
+      <div class="results-score-big" style="color:${scoreColor}">${pct}%</div>
+      <div class="results-pct">${correct} correct out of ${answered} answered</div>
+      <div class="score-cards">
+        <div class="score-card correct"><div class="score-card-num">${correct}</div><div class="score-card-lbl">Correct</div></div>
+        <div class="score-card wrong"><div class="score-card-num">${wrong.length}</div><div class="score-card-lbl">Incorrect</div></div>
+        <div class="score-card skipped"><div class="score-card-num">${skippedFinal.length}</div><div class="score-card-lbl">Skipped</div></div>
+        <div class="score-card"><div class="score-card-num">${answered}</div><div class="score-card-lbl">Answered</div></div>
+      </div>
+    </div>
+    ${wrongHtml}
+    ${skippedHtml}
+    <div class="results-actions">
+      <button class="res-btn primary" onclick="startQuiz()">RETRY QUIZ</button>
+      <button class="res-btn secondary" onclick="goHome()">CHANGE MODULES</button>
+    </div>`;
+}
+
+function filterWrong(mod, btn){
+  document.querySelectorAll('#filterRow .mf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#wrongList .review-card').forEach(card=>{
+    if(mod==='all'||card.dataset.mod==mod) card.style.display='';
+    else card.style.display='none';
+  });
+}
+
+buildHome();
+</script>
+</body>
+</html>
